@@ -190,7 +190,7 @@ class Faiss:
         return self.index.ntotal
 
 
-GLOBAL_STREAM = None
+GLOBAL_STREAM = torch.cuda.Stream()
 
 
 class ContextManager:

@@ -54,6 +54,8 @@ def generate_stream(
     stream_interval: int = 2,
     judge_sent_end: bool = False,
     clear_kv_cache: bool = True,
+    load_kv_cache_file: str = None,
+    store_kv_cache_file: str = None,
 ):
     if hasattr(model, "device"):
         device = model.device
@@ -87,15 +89,18 @@ def generate_stream(
     output_ids = list(input_ids)
     input_echo_len = len(input_ids)
 
-    
     out = None
-    if clear_kv_cache:
+    if hasattr(model, "_fschat_pkv"):
+        past_key_values = model._fschat_pkv
+    elif load_kv_cache_file is not None:
+        # print(f"Loading past_key_values from {load_kv_cache_file}")
+        past_key_values = torch.load(load_kv_cache_file)
+    elif clear_kv_cache:
         past_key_values = None
     else:
-        if hasattr(model, "_fschat_pkv"):
-            past_key_values = model._fschat_pkv
-        else:
-            past_key_values = None
+        past_key_values = None
+
+    # print("past_key_values:",past_key_values)
         
     def get_length(pkv):
         if pkv is None:
@@ -109,8 +114,10 @@ def generate_stream(
                 return pkv[0].size(-2)
 
         return pkv.length
-
-    start_length = get_length(past_key_values)
+    if not hasattr(model, "_fschat_pkv") and load_kv_cache_file is not None:
+        start_length = 0
+    else:
+        start_length = get_length(past_key_values)
 
     assert len(input_ids) > start_length
     input_ids = input_ids[start_length:]
@@ -290,6 +297,9 @@ def generate_stream(
 
     # Clean
     model._fschat_pkv = past_key_values
+    if store_kv_cache_file is not None:
+        # print(f"Storing past_key_values to{store_kv_cache_file}")
+        torch.save(past_key_values, store_kv_cache_file)
 
     del out
     gc.collect()
@@ -325,7 +335,9 @@ def chat_loop(
     history: bool = True,
     clear_kv_cache = False,
     top_k: int = -1,
-    top_p: float = 1.0
+    top_p: float = 1.0,
+    load_kv_cache_file: str = None,
+    store_kv_cache_file: str = None,
 ):
     # Model
     model, tokenizer = load_model(
@@ -512,7 +524,9 @@ def chat_loop(
                 device,
                 context_len=context_len,
                 judge_sent_end=judge_sent_end,
-                clear_kv_cache=_clear_kv_cache
+                clear_kv_cache=_clear_kv_cache,
+                load_kv_cache_file=load_kv_cache_file,
+                store_kv_cache_file=store_kv_cache_file,
             )
             t = time.time()
             outputs = chatio.stream_output(output_stream)
@@ -620,7 +634,9 @@ def main(args):
             debug=args.debug,
             history=not args.no_history,
             inf_llm_config=inf_llm_config,
-            clear_kv_cache=args.clear_kv_cache
+            clear_kv_cache=args.clear_kv_cache,
+            load_kv_cache_file=args.load_kv_cache_file,
+            store_kv_cache_file=args.store_kv_cache_file,
         )
     except KeyboardInterrupt:
         print("exit...")
@@ -721,6 +737,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--clear-kv-cache",
         action="store_true"
+    )
+    parser.add_argument(
+        "--load-kv-cache-file",
+        type=str, help="load kv cache from",
+        default=None
+    )
+    parser.add_argument(
+        "--store-kv-cache-file",
+        type=str, help="store kv cache to",
+        default=None
     )
     args = parser.parse_args()
     main(args)
