@@ -2,3 +2,5 @@ __pycache__
 *.jsonl
 benchmark/data
 inf_llm.egg-info/*
+book
+book.txt
