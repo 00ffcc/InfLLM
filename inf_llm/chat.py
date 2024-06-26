@@ -43,7 +43,7 @@ from fastchat.serve.cli import (
 )
 
 from inf_llm.utils import patch_hf
-
+start_length = 0
 @torch.inference_mode()
 def generate_stream(
     model,
@@ -101,26 +101,10 @@ def generate_stream(
         past_key_values = None
 
     # print("past_key_values:",past_key_values)
-        
-    def get_length(pkv):
-        if pkv is None:
-            return 0
-
-        pkv = pkv[0]
-        if isinstance(pkv, tuple):
-            if len(pkv) == 3:
-                return pkv[-1]
-            else:
-                return pkv[0].size(-2)
-
-        return pkv.length
-    if not hasattr(model, "_fschat_pkv") and load_kv_cache_file is not None:
-        start_length = 0
-    else:
-        start_length = get_length(past_key_values)
-
+    global start_length    
     assert len(input_ids) > start_length
     input_ids = input_ids[start_length:]
+    start_length = len(input_ids)
     if model.config.is_encoder_decoder:
         raise NotImplementedError
     else:

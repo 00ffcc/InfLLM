@@ -6,7 +6,7 @@ model:
   n_local: 4096
   topk: 16
   repr_topk: 4
-  max_cached_block: 0
+  max_cached_block: 24
   exc_block_size: 512
   fattn: false
   base: 1000000
