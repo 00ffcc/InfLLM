@@ -283,6 +283,12 @@ def generate_stream(
     model._fschat_pkv = past_key_values
     if store_kv_cache_file is not None:
         # print(f"Storing past_key_values to{store_kv_cache_file}")
+        for past_key_value in past_key_values:
+            for block in past_key_value.global_blocks:
+                for unit in block:
+                    if unit.event is not None:
+                        unit.event.wait()
+                        unit.event = None
         torch.save(past_key_values, store_kv_cache_file)
 
     del out
