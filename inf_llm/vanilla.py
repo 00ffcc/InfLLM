@@ -1,5 +1,7 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
+import transformers
+transformers.logging.set_verbosity(transformers.logging.CRITICAL)
 device = "cuda" # the device to load the model onto
 
 model = AutoModelForCausalLM.from_pretrained(

@@ -43,6 +43,8 @@ from fastchat.serve.cli import (
 )
 
 from inf_llm.utils import patch_hf
+import transformers
+transformers.logging.set_verbosity(transformers.logging.CRITICAL)
 start_length = 0
 @torch.inference_mode()
 def generate_stream(
